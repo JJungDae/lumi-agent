@@ -18,7 +18,7 @@ repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.8.6
     hooks:
-      # 린트 검사 + 자동 수정
+      # 린트 검사 + 자동 수정 - unit test는 제외한 이유는 테스트가 오래걸려서 커밋이 지연되기 때문에 테스트는 깃허브에 맡긴다.
       - id: ruff
         args: [--fix, --exit-non-zero-on-fix]
         types_or: [python, pyi]
