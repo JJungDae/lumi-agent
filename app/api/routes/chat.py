@@ -52,7 +52,7 @@ async def chat(request: ChatRequest) -> ChatResponse:
 
     try:
         # Step 1: LangGraph 그래프 가져오기
-        graph = get_lumi_graph()
+        graph = get_lumi_graph() # noqa : F841
 
         # Step 2: 초기 상태 생성
         # 사용자 메시지를 messages에 포함
