@@ -91,6 +91,8 @@ class TestHealthEndpoints:
     def test_health_check(self, client):
         """기본 헬스체크 테스트"""
         response = client.get("/api/v1/health/")
+        # 테스트 주도 개발 - 당장 필요한 것들 정의해놓고 테스트 통과 못하면 그것부터 개발해서 테스트 통과할 수 있도록 함
+        # 이 api가 없어서 오류남 -> 만들어서 재시도.
         assert response.status_code == 200
 
         data = response.json()

@@ -28,7 +28,7 @@
 ### 1. 의존성 설치
 
 ```bash
-uv sync
+uv sync #개발용?
 ```
 
 > `uv` 가 `pyproject.toml` / `uv.lock` 을 읽어 `.venv/` 가상환경을 자동으로 만들고
@@ -37,8 +37,8 @@ uv sync
 > 💡 **개발·실습 도구 설치**
 >
 > ```bash
-> uv sync --extra dev      # 테스트·린트 (CI 실습시 활용: pytest·ruff) — CI도 이 명령을 사용
-> uv sync --all-extras     # 위 + Jupyter 노트북까지 한 번에 (study/ 노트북 실행용)
+> uv sync --extra dev      # 테스트·린트 (CI 실습시 활용: pytest·ruff) — CI도 이 명령을 사용 -테스트용(pyproject.toml에 적혀있다.)
+> uv sync --all-extras     # 위 + Jupyter 노트북까지 한 번에 (study/ 노트북 실행용) -공부용
 > ```
 >
 > `study/` 참고 노트북을 열려면 Jupyter가 필요합니다 (`notebook` extra).
@@ -191,13 +191,13 @@ uv run python data/scripts/ingest_rag.py --active-only
 
 ---
 
-## 강의 노트 
+## 강의 노트
 - 1강 핵심 목표 : StartCode의 핵심 구조 이해
 
 
-### TODO - 1강 
+### TODO - 1강
 - [v] 환경 세팅
-    - [v] Code Class Live Share 익스텐션 설치 
+    - [v] Code Class Live Share 익스텐션 설치
         - [v] 화면 공유 테스트
     - [v] 가상 환경 생성
         - uv sync --all-extras
@@ -205,18 +205,18 @@ uv run python data/scripts/ingest_rag.py --active-only
     - [v] Supabase 설정
         - [v] 프로젝트에 data/supabase_schema.sql 실행
         - [v] 스케줄 데이터 저장
-            - uv run python data/scripts/ingest_data.py 
+            - uv run python data/scripts/ingest_data.py
         - [v] RAG 데이터 저장
             - uv run python data/scripts/ingest_rag.py
-    - [v] 프로젝트 실행 
+    - [v] 프로젝트 실행
         - uv run uvicorn app.main:app --reload
-    
-- [v] StartCode 구조 이해 
-    - [v] 1강 핵심 코드 이해 
-        ├── app/                  
+
+- [v] StartCode 구조 이해
+    - [v] 1강 핵심 코드 이해
+        ├── app/
         ├── [v] main.py                # FastAPI 진입점 (앱 생성·미들웨어·라우터 등록)
         ├── core/
-        │   └── [v] config.py          # 환경변수 설정 
+        │   └── [v] config.py          # 환경변수 설정
         ├── schemas/
             └── [v] chat.py            # 채팅 요청/응답 스키마
     - [v] 기타 코드
@@ -244,7 +244,7 @@ app/
 │   ├── nodes.py           ← 노드 구현
 │   ├── edges.py           ← 라우팅 로직
 │   └── graph.py           ← 그래프 조립 + 싱글톤
-├── repositories/          ← DB 접근 계층 
+├── repositories/          ← DB 접근 계층
 │   ├── rag.py             ← RAG 검색 (Supabase pgvector)
 │   ├── schedule.py        ← 스케줄 조회
 │   └── fan_letter.py      ← 팬레터 저장
@@ -278,7 +278,7 @@ app/
 - [v] API 서버 구현
     - [v] api/routes/chat.py : 엔드포인트에 따라 서비스 제공 (루미 챗봇)
 - [v] 프론트엔드 구현
-    - [v] ui.py : Gradio 사용 
+    - [v] ui.py : Gradio 사용
 - [v] main.py : lifespan에서 graph 싱글톤 로드 + 채팅 라우터 등록
 
 ### 이번 시간 강의의 핵심
@@ -332,9 +332,166 @@ app/
 - [] app/schemas/chat.py : StreamEvent, to_sse()
 - [] app/api/routes/chat.py : SSE 구현. stream_with_status 함수
   - [] SSE 엔드포인트 추가
-- [] app/ui.py : 스트리밍 데이터를 받아서 처리할 수 있도록 함수 
+- [] app/ui.py : 스트리밍 데이터를 받아서 처리할 수 있도록 함수
 
 ### 이번 시간 강의의 핵심
 - SSE 구현을 어떻게 하는가?
 - 목표는 바닥부터 직접 짜는 것이 아니라, 개념과 기술을 잘 이해하고 나의 프로젝트에 기술적 선택의 근거로 말할 수 있고 프로젝트에 활용함 (AI의 도움을 받아도됨)
 - 작업 순서: (1) 이벤트 형태 정의 → (2) 백엔드(전송) → (3) 프론트(수신)
+
+
+
+
+## 강의 노트 4강
+- 핵심 목표 : CI 파이프라인 구축 - 코드를 main에 합치기 전에 기계가 자동으로 검사(린트,테스트,AI리뷰)하게 만들기
+
+### 핵심 개념
+- **CI (Continuous Integration)** : 코드를 합치기(Merge) 전에 린트·테스트를 자동으로 실행해, 불량 코드가 main에 들어가는 걸 막는 자동화.
+- **Pull Request (PR)** : "내 브랜치의 변경사항을 main에 합쳐주세요"라고 요청하는 것. 이 시점에 코드 리뷰 + CI 검사가 돌고, 통과해야 Merge 한다.
+- **단위 테스트 (Unit Test)** : 함수·API 하나가 기대한 대로 동작하는지 검증하는 자동화 코드(pytest). 코드를 고쳐도 기존 기능이 안 깨졌는지 즉시 확인 가능.
+- **린트 (Lint)** : 코드를 실행하지 않고 안 쓰는 import·문법 실수·스타일 문제를 잡아주는 정적 검사(Ruff).
+- **포맷팅 (Format)** : 들여쓰기·공백 등 코드 "모양"을 팀 규칙대로 자동 정리(ruff format). 스타일 논쟁을 기계에게 맡긴다.
+- **GitHub Actions** : GitHub이 제공하는 자동화 서버. `.github/workflows/*.yml` 에 적어두면 push/PR 때 알아서 실행해 준다.
+
+### TODO
+- [] GitHub 준비
+    - [v] GitHub에서 새 repo 생성
+    - [v] 3강 완성 코드를 main에 업로드
+      ```bash
+      git init
+      git add .
+      git commit -m "feat: 3강 완성 코드"
+      git branch -M main
+      git remote add origin https://github.com/JJungDae/lumi-agent.git
+      git push -u origin main
+      ```
+    - [v] GitHub Secrets 등록
+        - repo → Settings → Secrets and variables → Actions → New repository secret
+        - `UPSTAGE_API_KEY` / `SUPABASE_URL` / `SUPABASE_KEY` 3개 등록
+- [] CI 워크플로우 추가 (새 브랜치 → push → PR)
+    - [] 새 브랜치 생성 & 체크아웃
+      ```bash
+      git checkout -b feat/ci
+      ```
+    - [] `.github/workflows/ci.yml` 작성
+    - [] 변경된 파일 git add, commit, push
+      ```bash
+      git add .github/workflows/ci.yml
+      git commit -m "update: ci.yml"
+      git push --set-upstream origin feat/ci
+      ```
+    - [] GitHub에서 **Compare & pull request** 버튼 → PR 생성
+    - [] PR의 Checks / Actions 탭에서 CI 결과 확인 — 실행 순서: lint → (test · ai-review 병렬) → comment
+    - [] 초록불(✅) 확인 후 Merge
+- [] 로컬 사전 검사 ① — 명령어 직접 실행 (CI가 돌리는 것과 똑같은 검사를 손으로 실행)
+    - [] 일부러 문제 있는 `test.py` 를 만들기 (안 쓰는 import + 줄 끝 공백)
+      ```python
+      import os  # 안 쓰는 import (Ruff가 잡음)
+      x   =     1     # 뒤에 불필요한 공백
+      ```
+    - [] 린트 (안 쓰는 import·문법 실수 검사)
+      ```bash
+      uv run ruff check test.py          # 확인: 문제만 보여줌 (파일 안 고침) — CI가 쓰는 명령
+      uv run ruff check test.py --fix    # 수정: 자동 수정 가능한 것 실제로 고침
+      ```
+    - [] 포맷 (들여쓰기·공백 등 코드 모양 정리)
+      ```bash
+      uv run ruff format test.py --check # 확인: 규칙에 맞는지 검사만 (다르면 실패) — CI가 쓰는 명령
+      uv run ruff format test.py         # 수정: 실제로 모양을 정리
+      ```
+    - [] 단위 테스트 (확인만 — pytest는 자동 수정 없음. 실패하면 코드를 직접 고침)
+      ```bash
+      uv run pytest tests/ -v            # CI의 test Job과 동일한 명령. push 전에 로컬에서 먼저 통과 확인
+      ```
+        - [] health API 등록
+    - [] 확인 끝났으면 `test.py` 삭제
+- [] 로컬 사전 검사 ② — pre-commit 훅 (commit할 때 위 검사를 자동으로) — 아래 섹션 참고
+    - [] `uv run pre-commit install` — Git 훅 등록 (한 번만)
+    - [] 다시 문제 있는 `test.py` 를 만들고 `git add` → `git commit` → 훅이 자동으로 잡아서 수정하는지 확인
+    - [] 이미 push된 파일 전체 검사: `uv run pre-commit run --all-files`
+    - [] Unsafe 항목(F841·E402)은 직접 수정
+- [] Test가 통과되어야 Merge 가능하도록 설정 (Ruleset)
+    - [] Settings → Rules → Rulesets → New ruleset → **New branch ruleset**
+    - [] Ruleset Name: `protect main branch` / Enforcement status: **Active**
+    - [] Target branches: Add target → **Include default branch** (= main)
+    - [] Rules 체크: **Require a pull request before merging** + **Require status checks to pass** → 검색창에서 **Code Quality** 와 **Unit Tests** 선택
+        - 목록에는 YAML의 job id(lint/test)가 아니라 **Job의 표시 이름**(`name:` 값)이 뜬다
+        - 이 목록은 CI가 최소 한 번 실행된 뒤에만 나타남 (앞 단계에서 이미 돌렸으므로 보임)
+- [] AI 코드 리뷰 (CodeRabbit 연동 - 과제 교안보고 직접 해보기)
+    - [] https://app.coderabbit.ai/login 접속 → **GitHub Cloud** 로 회원가입 후 인증(Authorize)
+    - [] 내 repo에 권한(Grant) 부여
+    - [] 연동만 해두면 이후 **PR을 열 때마다 자동으로 리뷰 코멘트**가 달림
+    - [] 리뷰 제안 프롬프트를 바탕으로 **코드 자동 수정 커밋**까지 만들어 주는 것 확인 (fix: apply CodeRabbit auto-fixes)
+
+
+## 강의 노트 5강
+- 핵심 목표 : 클라우드 배포(CD) — main에 머지되면 **Docker 이미지가 자동으로 빌드되고 GCP 서버에 배포**되게 만들기
+
+
+
+### TODO
+- [] 사전 확인
+    - [v] Docker Desktop 설치 & 실행
+        - macOS: https://docs.docker.com/desktop/setup/install/mac-install/ (Apple Silicon/Intel 구분)
+        - Windows: https://docs.docker.com/desktop/setup/install/windows-install/ (**WSL2 필요** — 설치 중 안내대로 활성화)
+        - 확인: `docker version` (Client/Server 둘 다 나오면 OK — Server가 없으면 Docker Desktop 앱을 실행할 것)
+- [v] Docker 파일 3종 작성 (아래 해설 참고)
+    - [v] `Dockerfile` — 멀티 스테이지 빌드 + non-root 유저 + 헬스체크
+    - [v] `.dockerignore` — .venv/.git/.env 등 제외
+    - [v] `docker-compose.yml` — 포트·환경변수·헬스체크·재시작 정책
+- [] 로컬 실습 — 이미지 빌드 & 실행 (mac/Windows 공통, 아래 "로컬 실습" 섹션 참고)
+    - [v] Docker Desktop 실행
+    - [v] `docker build -t lumi-agent .` — 이미지 빌드
+    - [v] `docker images` — 만들어진 이미지 확인
+    - [v] `docker run -d -p 8000:8000 --env-file .env lumi-agent` — 컨테이너 실행
+    - [v] `docker ps` — 실행 중인 컨테이너 확인
+    - [v] `docker stop <컨테이너ID>` — 컨테이너 종료
+    - [v] 브라우저로 http://localhost:8000/ui 접속 확인
+
+    - 아래 내용은 집에서 해보기
+        - [] `docker compose up -d --build` - Docker Compose로 재실행
+        - [] `docker compose logs -f` - 실행 로그 확인
+        - [] `docker compose down` - 컨테이너 종료
+        - [] 브라우저로 http://localhost:8000/ui 접속 확인
+- [] GCP 서버 준비 (Compute Engine)
+    - [] gcloud CLI 설치 & 초기화 (SSH 접속·키 생성에 필요)
+        - 설치: https://cloud.google.com/sdk/docs/install (mac은 `brew install --cask google-cloud-sdk` 도 가능)
+        - `gcloud init` → 브라우저로 Google 로그인 → 프로젝트 선택
+    - [v] VM 인스턴스 생성: 이름 `lumi-server` / 리전 asia-northeast3(서울) / **e2-medium** / **Ubuntu 22.04 LTS** / 네트워크 태그 `lumi-server`
+        > 💸 e2-medium은 무료 등급이 아님 (결제 계정 필요, 켜둔 시간만큼 과금) → **실습 후 VM 삭제**할 것!
+    - [v] 방화벽 규칙: VPC 네트워크 → 방화벽 → 규칙 만들기 — **tcp:8000 허용** · 대상 태그 `lumi-server` · 소스 `0.0.0.0/0` (VM의 태그와 규칙의 대상 태그가 일치해야 적용됨!)
+    - [] SSH 접속: `gcloud compute ssh --zone "asia-northeast3-a" "appuser@lumi-server" --project "<내 프로젝트ID>" --quiet` (appuser = 배포용 일반 계정, gcloud가 자동 생성)
+        > ⚠️ 최초 접속 시 SSH 키(`~/.ssh/google_compute_engine`)가 자동 생성됨.
+    - [v] 서버에 Docker 설치 (설치 후 **재접속해야** sudo 없이 docker 사용 가능)
+      ```bash
+      sudo apt-get update && sudo apt-get install -y docker.io
+      sudo systemctl enable --now docker
+      sudo usermod -aG docker $USER
+      sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64" -o /usr/local/bin/docker-compose
+      sudo chmod +x /usr/local/bin/docker-compose
+      exit   # docker 그룹 적용을 위해 재접속
+      ```
+    - [v] `docker run hello-world` — "Hello from Docker!" 나오면 준비 완료
+- [v] GitHub Secrets **6개** 등록 (Settings → Secrets and variables → Actions)
+    - [v] 기존 3개 (4강에서 등록): `UPSTAGE_API_KEY` / `SUPABASE_URL` / `SUPABASE_KEY`
+    - [v] `GCE_HOST` — VM 외부 IP (VM 인스턴스 목록에서 확인)
+    - [v] `GCE_USERNAME` — SSH 사용자명 (예: `appuser`)
+    - [v] `GCE_SSH_KEY` — SSH **개인키 전체 내용**
+        - macOS/Linux: `cat ~/.ssh/google_compute_engine`
+        - Windows PowerShell: `Get-Content "$env:USERPROFILE\.ssh\google_compute_engine"`
+        - `-----BEGIN ... KEY-----` 부터 `-----END ... KEY-----` 까지 통째로 복사
+- [] CD 파이프라인 연결
+    - [] 새 브랜치: `git checkout -b feat/cd`
+    - [] `.github/workflows/cd.yml` 작성 (아래 해설 참고)
+    - [] add / commit / push → PR 생성 → CI 통과 확인 → **Merge**
+      ```bash
+      git add Dockerfile .dockerignore docker-compose.yml .github/workflows/cd.yml
+      git commit -m "feat: cd 파이프라인 추가"
+      git push --set-upstream origin feat/cd
+      ```
+    - [] Merge 되면 Actions 탭에서 **Lumi Agent CD** 실행 확인 (Build & Push to GHCR → Deploy to Compute Engine → Summary)
+- [] 배포 확인
+    - [] 브라우저에서 `http://<VM 외부IP>:8000` 접속 (루미 서비스!)
+    - [] 서버 SSH 접속 후 `docker ps -a` — STATUS `Up`, PORTS `0.0.0.0:8000->8000` 이면 정상
+    - [] `docker logs <컨테이너ID> -f` — 실시간 로그 확인 (ID는 앞 6글자만 써도 됨)
+- [] (참고) 롤백: Actions → Lumi Agent CD → **Run workflow** → `rollback` 체크 → 이전 이미지로 자동 복구
