@@ -6,6 +6,7 @@ LangGraph 에이전트를 호출하여 사용자 메시지를 처리합니다.
 엔드포인트:
     POST /chat/          - 채팅 메시지 전송
 """
+
 from collections.abc import AsyncGenerator
 
 from fastapi import APIRouter, HTTPException
@@ -45,17 +46,18 @@ async def chat(request: ChatRequest) -> ChatResponse:
             -d '{"message": "오늘 방송 언제야?", "session_id": "user123"}'
         ```
     """
-    logger.info(f"📩 채팅 요청: session={request.session_id}, message={request.message[:50]}...")
+    logger.info(
+        f"📩 채팅 요청: session={request.session_id}, message={request.message[:50]}..."
+    )
 
     try:
         # Step 1: LangGraph 그래프 가져오기
-        graph = get_lumi_graph()
+        graph = get_lumi_graph() # noqa : F841
 
         # Step 2: 초기 상태 생성
         # 사용자 메시지를 messages에 포함
         initial_state = {
-
-            "messages": [HumanMessage(content=request.message)], 
+            "messages": [HumanMessage(content=request.message)],
             "intent": None,
             "retrieved_docs": [],
             "tool_name": None,
@@ -111,12 +113,11 @@ async def chat(request: ChatRequest) -> ChatResponse:
 
 
 # SSE 스트리밍 - Helper 함수
-async def stream_with_status( #그래프에서 만든 streaming응답 반환 함수
+async def stream_with_status(  # 그래프에서 만든 streaming응답 반환 함수
     message: str,
     session_id: str,
     user_id: str | None = None,
 ) -> AsyncGenerator[tuple[str | None, str | None, str | None, str | None], None]:
-
     """
     노드 상태 + 토큰 스트리밍 결합
 
@@ -168,7 +169,10 @@ async def stream_with_status( #그래프에서 만든 streaming응답 반환 함
 
     # 핵심: 두 모드 동시 사용(updates + messages)
     # stream_mode가 리스트일 때: (mode_name, event) 튜플로 반환됨
-    async for mode, event in graph.astream( #stream은 응답이 여러개 오니까 for문, 그 중에서 async for 문
+    async for (
+        mode,
+        event,
+    ) in graph.astream(  # stream은 응답이 여러개 오니까 for문, 그 중에서 async for 문
         initial_state, stream_mode=["updates", "messages"]
     ):
         # 노드 스트리밍 (stream_mode="updates") : 노드가 완료될 때마다 이벤트 발생
@@ -206,8 +210,10 @@ async def stream_with_status( #그래프에서 만든 streaming응답 반환 함
     if final_response:
         if session_id not in SESSION_STORE:
             SESSION_STORE[session_id] = []
-        SESSION_STORE[session_id].append(new_message) #사용자 입력 저장
-        SESSION_STORE[session_id].append(AIMessage(content=final_response)) #aid응답 저장
+        SESSION_STORE[session_id].append(new_message)  # 사용자 입력 저장
+        SESSION_STORE[session_id].append(
+            AIMessage(content=final_response)
+        )  # aid응답 저장
         logger.debug(f"💾 [StreamWithStatus] 세션 저장: {session_id}")
 
     # 마지막에 최종 응답 yield : status, token, final_response, final_tool_name
@@ -238,7 +244,9 @@ async def chat_stream(request: ChatRequest) -> StreamingResponse:
     """
     logger.info(f"📩 [Stream] 노드+토큰 스트리밍 요청: session={request.session_id}")
 
-    async def generate() -> AsyncGenerator[str, None]: #for문으로 응답을 받아 이벤트를 만들고 to_sse()로 반환.
+    async def generate() -> (
+        AsyncGenerator[str, None]
+    ):  # for문으로 응답을 받아 이벤트를 만들고 to_sse()로 반환.
         """SSE 이벤트 생성기 - 노드 상태 + 토큰 스트리밍"""
         try:
             async for status, token, final, tool_used in stream_with_status(
