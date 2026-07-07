@@ -30,7 +30,7 @@
 ```bash
 uv sync #개발용?
 ```
-
+##
 > `uv` 가 `pyproject.toml` / `uv.lock` 을 읽어 `.venv/` 가상환경을 자동으로 만들고
 > 필요한 패키지를 설치합니다. (`requires-python >=3.11`)
 
